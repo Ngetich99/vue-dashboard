@@ -1,73 +1,128 @@
 <template>
-  <div>
+  <div class="dashboard">
     <h1>Dashboard</h1>
 
-    <button @click="loadLeads">Load Leads</button>
+    <!-- Loading state -->
+    <div v-if="loading">Loading leads...</div>
 
-    <!-- Show loading message -->
-    <p v-if="loading">Loading leads...</p>
+    <!-- Error state -->
+    <div v-if="error" class="error">{{ error }}</div>
 
-    <!-- Show error if API fails -->
-    <p v-if="error" style="color:red">{{ error }}</p>
+    <!-- No leads state -->
+    <div v-if="!loading && leads.length === 0 && !error">No leads found.</div>
 
-    <!-- Show leads list -->
-    <ul v-if="store.leads.length > 0">
-      <li v-for="lead in store.leads" :key="lead.id">
-        {{ lead.name }} — {{ lead.email }}
+    <!-- Leads list -->
+    <ul v-if="!loading && leads.length > 0">
+      <li v-for="lead in leads" :key="lead.id">
+        {{ lead.name }} - {{ lead.email }}
       </li>
     </ul>
 
-    <p v-else-if="!loading">No leads found.</p>
-
+    <!-- Add Lead Form -->
     <h2>Add Lead</h2>
-    <form @submit.prevent="addNewLead">
-      <input v-model="name" placeholder="Name" required />
-      <input v-model="email" placeholder="Email" required />
-      <button type="submit">Add Lead</button>
+    <form @submit.prevent="addLead">
+      <input v-model="newLead.name" placeholder="Name" required />
+      <input v-model="newLead.email" placeholder="Email" required />
+      <button type="submit" :disabled="addingLead">
+        {{ addingLead ? "Adding..." : "Add Lead" }}
+      </button>
     </form>
+
+    <!-- Success message -->
+    <div v-if="success" class="success">{{ success }}</div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted } from "vue";
-import { useLeadsStore } from "../stores/leads";
+import axios from "axios";
 
-const store = useLeadsStore();
+// API base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+
+const leads = ref([]);
 const loading = ref(false);
 const error = ref(null);
-const name = ref("");
-const email = ref("");
+const success = ref(null);
+const addingLead = ref(false);
 
-// Function to load leads
-const loadLeads = async () => {
+const newLead = ref({
+  name: "",
+  email: "",
+});
+
+// Fetch leads
+const fetchLeads = async () => {
   loading.value = true;
   error.value = null;
+  success.value = null;
   try {
-    await store.fetchLeads();
+    const response = await axios.get(`${API_BASE_URL}/leads`);
+    leads.value = response.data;
   } catch (err) {
-    error.value = "Failed to load leads. Check backend connection.";
-    console.error(err);
+    console.error("Fetch leads error:", err.response || err.message);
+    error.value = "Failed to fetch leads. Check backend connection.";
   } finally {
     loading.value = false;
   }
 };
 
-// Automatically load leads when dashboard mounts
-onMounted(() => {
-  loadLeads();
-});
+// Add new lead
+const addLead = async () => {
+  if (!newLead.value.name || !newLead.value.email) return;
 
-// Function to add a new lead
-const addNewLead = async () => {
-  if (!name.value || !email.value) return;
+  addingLead.value = true;
+  error.value = null;
+  success.value = null;
 
   try {
-    await store.addLead({ name: name.value, email: email.value });
-    name.value = "";
-    email.value = "";
+    const response = await axios.post(`${API_BASE_URL}/leads`, newLead.value);
+    leads.value.push(response.data);
+    newLead.value.name = "";
+    newLead.value.email = "";
+    success.value = "Lead added successfully!";
   } catch (err) {
-    error.value = "Failed to add lead. Check backend connection.";
-    console.error(err);
+    console.error("Add lead error:", err.response || err.message);
+    if (err.response && err.response.data && err.response.data.message) {
+      error.value = `Failed to add lead: ${err.response.data.message}`;
+    } else {
+      error.value = "Failed to add lead. Check backend connection.";
+    }
+  } finally {
+    addingLead.value = false;
   }
 };
+
+// Auto-load leads on mount
+onMounted(fetchLeads);
 </script>
+
+<style scoped>
+.dashboard {
+  max-width: 600px;
+  margin: auto;
+  padding: 20px;
+}
+
+.error {
+  color: red;
+  margin-bottom: 10px;
+}
+
+.success {
+  color: green;
+  margin-bottom: 10px;
+}
+
+form input {
+  display: block;
+  margin-bottom: 10px;
+  padding: 5px;
+  width: 100%;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+</style>
