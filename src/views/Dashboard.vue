@@ -37,7 +37,7 @@
 import { ref, onMounted } from "vue";
 import axios from "axios";
 
-// API base URL
+// Make sure your Vercel env variable is set
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
 
 const leads = ref([]);
@@ -51,13 +51,13 @@ const newLead = ref({
   email: "",
 });
 
-// Fetch leads
+// Fetch leads from backend
 const fetchLeads = async () => {
   loading.value = true;
   error.value = null;
   success.value = null;
   try {
-    const response = await axios.get(`${API_BASE_URL}/leads`);
+    const response = await axios.get(`${API_BASE_URL}/api/leads/`);
     leads.value = response.data;
   } catch (err) {
     console.error("Fetch leads error:", err.response || err.message);
@@ -67,7 +67,7 @@ const fetchLeads = async () => {
   }
 };
 
-// Add new lead
+// Add a new lead
 const addLead = async () => {
   if (!newLead.value.name || !newLead.value.email) return;
 
@@ -76,24 +76,20 @@ const addLead = async () => {
   success.value = null;
 
   try {
-    const response = await axios.post(`${API_BASE_URL}/leads`, newLead.value);
-    leads.value.push(response.data);
+    const response = await axios.post(`${API_BASE_URL}/api/leads/`, newLead.value);
+    leads.value.unshift(response.data); // add to top of list
     newLead.value.name = "";
     newLead.value.email = "";
     success.value = "Lead added successfully!";
   } catch (err) {
     console.error("Add lead error:", err.response || err.message);
-    if (err.response && err.response.data && err.response.data.message) {
-      error.value = `Failed to add lead: ${err.response.data.message}`;
-    } else {
-      error.value = "Failed to add lead. Check backend connection.";
-    }
+    error.value = err.response?.data?.message || "Failed to add lead. Check backend connection.";
   } finally {
     addingLead.value = false;
   }
 };
 
-// Auto-load leads on mount
+// Auto-load leads on component mount
 onMounted(fetchLeads);
 </script>
 
