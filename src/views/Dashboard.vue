@@ -6,23 +6,17 @@
 
     <ul>
       <li v-for="lead in leads" :key="lead.id">
-        {{ lead.name }} - {{ lead.email }}
+        {{ lead.name }} — {{ lead.email }}
       </li>
     </ul>
   </div>
 </template>
 
-<script>
-import { useLeadsStore } from "../stores/leads";
+<script setup>
+import { useLeadsStore } from "../stores/leads"
 
-export default {
-  setup() {
-    const store = useLeadsStore();
+const store = useLeadsStore()
 
-    return {
-      leads: store.leads,
-      loadLeads: store.fetchLeads
-    };
-  }
-};
+const leads = store.leads
+const loadLeads = store.fetchLeads
 </script>
