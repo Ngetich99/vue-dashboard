@@ -1,29 +1,38 @@
-import { defineStore } from 'pinia'
-import { api } from '../services/api'
+import axios from 'axios';
+import { defineStore } from 'pinia';
+
+const API = import.meta.env.VITE_API_BASE_URL;
 
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null,
-    token: null
+    token: null,
   }),
+
   actions: {
-    login(userData) {
-      this.user = userData.user
-      this.token = userData.token
-    },
-    logout() {
-      this.user = null
-      this.token = null
-    },
-    async fetchUserProfile() {
+    async login(email, password) {
       try {
-        const response = await api.get('/api/profile', {
-          headers: { Authorization: `Bearer ${this.token}` }
-        })
-        this.user = response.data
+        const res = await axios.post(`${API}/auth/login`, {
+          email,
+          password
+        });
+
+        this.token = res.data.token;
+        this.user = res.data.user;
+
+        localStorage.setItem("token", this.token);
+
+        return res.data;
       } catch (error) {
-        console.error('Error fetching profile:', error)
+        console.error(error);
+        throw error;
       }
+    },
+
+    logout() {
+      this.user = null;
+      this.token = null;
+      localStorage.removeItem("token");
     }
   }
-})
+});
